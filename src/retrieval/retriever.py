@@ -99,7 +99,8 @@ class PolicyRetriever:
                                         sparse_vector_name = "sparse",
                                         )
 
-        self._retriever = self._store.as_retriever(search_kwargs={"k": self.settings.retrieval_limit})
+        self._retriever = self._store.as_retriever(search_type = 'similarity',
+                                                   search_kwargs={"k": self.settings.retrieval_limit})
 
         return self
 
@@ -134,6 +135,16 @@ class PolicyRetriever:
     def format_documents(self, documents: list[Document]):
         formatted_contents = "\n\n".join([doc.page_content for doc in documents])
         return formatted_contents
+
+    def retrieve_documents(self, query: str) -> list[Document]:
+        retriever = self._require_retriever()
+
+        candidates = retriever.invoke(query)
+        if not candidates:
+            return []
+    
+        return candidates
+    
 
     def _require_store(self) -> QdrantVectorStore:
         if self._store is None:

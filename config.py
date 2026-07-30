@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     llm_temperature : float = Field(default= 0.5, ge= 0.0, le = 1.0)
     max_llm_retries : int = Field(default=3, ge=0, le=5)
 
+    # First-time ingestion -> set to true in .env. 
+    # Later run's set to false in .env
+    re_ingest_docs: bool = False
+
     @property
     def openai_api_key_value(self) -> str:
         return self.openai_api_key.get_secret_value()
