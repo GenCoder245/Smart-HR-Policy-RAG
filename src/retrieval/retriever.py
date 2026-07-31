@@ -102,7 +102,7 @@ class PolicyRetriever:
         self._retriever = self._store.as_retriever(search_type = 'similarity',
                                                    search_kwargs={"k": self.settings.retrieval_limit})
 
-        return self
+        # return self
 
     # Check the usage of this function
     def search_with_score(self, query: str):
@@ -163,7 +163,7 @@ class PolicyRetriever:
 
 if __name__ == "__main__":
     policy_retriever = PolicyRetriever(settings=get_settings())
-    policy_retriever = policy_retriever.initialize()
+    policy_retriever.initialize()
 
 
 

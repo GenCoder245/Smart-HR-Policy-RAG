@@ -1,4 +1,5 @@
 #from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic import Field, SecretStr
@@ -54,6 +55,14 @@ class Settings(BaseSettings):
     # Later run's set to false in .env
     re_ingest_docs: bool = False
 
+    # Langsmith Tracing related:
+
+    langsmith_tracing: str = Field(default="false")
+    langsmith_endpoint: str = Field(default="https://api.smith.langchain.com")
+    langsmith_api_key : SecretStr | None = None
+    langsmith_project: str = Field(default="demo_project")
+
+
     @property
     def openai_api_key_value(self) -> str:
         return self.openai_api_key.get_secret_value()
@@ -70,8 +79,16 @@ class Settings(BaseSettings):
     def qdrant_api_key_value(self) -> str | None:
         return self.qdrant_api_key.get_secret_value() if self.qdrant_api_key else None
 
-
-
 # @lru_cache
 def get_settings() -> Settings:
-    return Settings()  # type: ignore[call-arg]
+
+    settings = Settings()
+    # Sync values to os.environ so LangSmith SDK can read them
+    os.environ["LANGSMITH_TRACING"] = settings.langsmith_tracing
+    os.environ["LANGSMITH_ENDPOINT"] = settings.langsmith_endpoint
+    os.environ["LANGSMITH_PROJECT"] = settings.langsmith_project
+
+    if settings.langsmith_api_key:
+        os.environ["LANGSMITH_API_KEY"] = settings.langsmith_api_key.get_secret_value() 
+
+    return settings  # type: ignore[call-arg]
