@@ -24,10 +24,10 @@ class Settings(BaseSettings):
     # ingestion_api_key: SecretStr
 
     # Model config
-    openai_chat_model: str = "gpt-4.1-mini"
-    openai_embedding_model: str = "text-embedding-3-large"
-    gemini_chat_model: str = "gemini-2.5-flash"
-    gemini_embedding_model: str = "models/gemini-embedding-001"
+    openai_chat_model: str = "gpt-5-nano-2025-08-07"
+    openai_embedding_model: str = "text-embedding-3-small"
+    gemini_chat_model: str = "gemini-3.5-flash-lite"
+    gemini_embedding_model: str = "gemini-embedding-2"
     embedding_dimension: int = Field(default=1536, gt=0)
 
     qdrant_url: str = "http://localhost:6333"
