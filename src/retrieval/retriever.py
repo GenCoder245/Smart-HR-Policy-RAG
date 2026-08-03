@@ -10,6 +10,7 @@ from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
+from langsmith import traceable
 
 class DenseEmbeddings:
     def __init__(self, primary, fallback) -> None:
@@ -127,15 +128,20 @@ class PolicyRetriever:
     
         return candidates
 
+    
+    @traceable(run_type="embedding", name="store embeddings")
     def store_documents(self,documents: list[Document], ids: list[str]):
         store = self._require_store()
         store.add_documents(documents=documents, ids=ids)
 
+    # tool, chain, llm, retriever, embedding, prompt, parser are the only valid values for "run_type" in the @traceable decorator. 
 
+    @traceable(run_type="parser", name="format documents")
     def format_documents(self, documents: list[Document]):
         formatted_contents = "\n\n".join([doc.page_content for doc in documents])
         return formatted_contents
 
+    @traceable(run_type="retriever", name="retrieve relevant context")
     def retrieve_documents(self, query: str) -> list[Document]:
         retriever = self._require_retriever()
 

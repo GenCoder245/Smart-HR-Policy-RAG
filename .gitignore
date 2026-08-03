@@ -12,6 +12,7 @@ dist/
 .qdrant/
 data/*.pdf
 !data/.gitkeep
+*.sqlite
 
 
 # May contain notebooks for R&D purpose
