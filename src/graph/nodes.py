@@ -84,16 +84,53 @@ def retrieve(state: AgentState):
                 "DO NOT ANSWER THE QUESTION YOURSELF."
             )),
         ]
-        standalone_query = llm_model.invoke(rephrased_chat_history).content.strip()
+
+        standalone_response = llm_model.invoke(rephrased_chat_history)
+        standalone_query = ""
+
+        # This check is required if use Gemini 3.x versions,
+        # where the content of AIMessage is a list, rather than a string.
+
+        if isinstance(standalone_response.content, list):
+            #print("Inside if block...", optimized_response.content[0])
+            standalone_query = standalone_response.content[0]['text'].strip()
+        elif isinstance(standalone_response.content, str):
+            # print("Inside else block...")
+            standalone_query = standalone_response.content.strip()
 
         # The tool will take care of formatting the documents and return only the context for user_query.
         # context = hr_policy_documents_search.invoke({"query": standalone_query})
-        context = hr_policy_documents_search.invoke(input=standalone_query)
-        
+        context = hr_policy_documents_search.invoke(input=standalone_query)        
 
     else:  
+        search_query_messages = [   SystemMessage(content=(
+                                        "Given the user query, Re-write the query accordingly such that it is "
+                                        "best optimized and suitable for vectordatabase search for "
+                                        "a HR Policy related query. "
+                                        "ONLY RETURN THE RE-WRITTEN QUESTION."
+                                        "DO NOT ANSWER THE QUESTION YOURSELF."
+                                    )),
+                                    HumanMessage(content=last_message)
+                                ]
+        optimized_response = llm_model.invoke(search_query_messages)
+        # print(f'-'*100)
+        # print(optimized_response)
+        # print(f'-'*100)
+
+        optimized_search_query = "" 
+
+        # This check is required if use Gemini 3.x versions,
+        # where the content of AIMessage is a list, rather than a string.
+
+        if isinstance(optimized_response.content, list):
+            #print("Inside if block...", optimized_response.content[0])
+            optimized_search_query = optimized_response.content[0]['text'].strip()
+        elif isinstance(optimized_response.content, str):
+            # print("Inside else block...")
+            optimized_search_query = optimized_response.content.strip()
+
         # The tool will take care of formatting the documents and return only the context for user_query.
-        context = hr_policy_documents_search.invoke(input=last_message)
+        context = hr_policy_documents_search.invoke(input=optimized_search_query)
 
     # This just retrieved the context, it doesn't contain the answer to the user's latest query yet.
     # Also this node doesn't add to existing messages list.

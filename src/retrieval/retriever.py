@@ -14,8 +14,9 @@ from langsmith import traceable
 
 from src.retrieval.reranker import CohereReranker
 
-class DenseEmbeddings:
+class DenseEmbeddings(Embeddings):
     def __init__(self, primary, fallback) -> None:
+        super().__init__()
         self.primary = primary
         self.fallback = fallback
 
@@ -105,7 +106,7 @@ class PolicyRetriever:
 
         self._store = QdrantVectorStore(client=self.client,
                                         collection_name = self.collection_name,
-                                        embedding= self.dense_embeddings.primary, # Check this
+                                        embedding=self.dense_embeddings,
                                         retrieval_mode = RetrievalMode.HYBRID,
                                         distance = Distance.COSINE,
                                         sparse_embedding = self.sparse_embeddings,
@@ -170,21 +171,18 @@ class PolicyRetriever:
 
     @traceable(run_type="retriever", name="re-rank documents(cohere)")
     def rerank_documents(self, query: str, ranked_docs: list[Document]) -> list[Document]:
-        reranked_docs = None
-
         if not ranked_docs:
             return []
-        
-        # apply cohere re-ranking
+
         if self.cohere_reranker:
             try:
                 reranked_docs = self.cohere_reranker.rerank_docs(query, ranked_docs)
+                if reranked_docs:
+                    return reranked_docs
             except Exception as e:
-                print(f"Cohere re-ranker failed due to : {e}") 
-        
-        if not reranked_docs:
-            return []
-        return reranked_docs
+                print(f"Cohere re-ranker failed due to: {e}")
+
+        return ranked_docs
     
 
     def _require_store(self) -> QdrantVectorStore:
