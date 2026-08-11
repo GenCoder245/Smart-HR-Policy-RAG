@@ -40,7 +40,7 @@ language_model = get_language_model(llm_settings=policy_settings)
 # Sample queries for checking:
 user_query = "how many sick leaves are allowed in this organization ?"
 # user_query = "tell me about the work from home guidelines ?"
-# user_query = "I am going on a business trip to New york. What are the policies for travel approval and reimbursement in our company ?"
+# user_query = "I am going on a business trip from Mumbai to New york. What are the policies for travel approval and reimbursement in our company ?"
 
 # **************** on-topic queries with possible follow-ups ************************
 
@@ -100,7 +100,7 @@ logger.info(f"The AI Response: {ai_response.content}")
 
 graph = build_graph(language_model, policy_retriever, checkpointer_memory)
 
-memory_config = {"configurable": {"thread_id":"10"}}
+memory_config = {"configurable": {"thread_id":"21"}}
 ai_response = graph.invoke(input = {"messages":[HumanMessage(content=user_query)],
                                     "retrieved_context": "",
                                     "next_node":""

@@ -12,6 +12,8 @@ from langchain_core.embeddings import Embeddings
 
 from langsmith import traceable
 
+from src.retrieval.reranker import CohereReranker
+
 class DenseEmbeddings:
     def __init__(self, primary, fallback) -> None:
         self.primary = primary
@@ -60,6 +62,17 @@ class PolicyRetriever:
 
         self.sparse_embeddings = FastEmbedSparse(model_name=settings.sparse_embedding_model,
                                 cache_dir=settings.cache_dir)
+
+        self.cohere_reranker: CohereReranker | None = None
+
+        if settings.cohere_api_key:
+            self.cohere_reranker = CohereReranker(
+                                api_key=settings.cohere_api_key, 
+                                model=self.settings.cohere_rerank_model,  
+                                top_k=self.settings.rerank_limit,
+                            )                  
+
+
         
 
 
@@ -135,12 +148,14 @@ class PolicyRetriever:
         store = self._require_store()
         store.add_documents(documents=documents, ids=ids)
 
+
     # tool, chain, llm, retriever, embedding, prompt, parser are the only valid values for "run_type" in the @traceable decorator. 
     # run_type="parser"-> because it is for parsing and formatting the retrieved documents into a suitable format to pass as context to the LLM. 
     @traceable(run_type="parser", name="format documents")
     def format_documents(self, documents: list[Document]):
         formatted_contents = "\n\n".join([doc.page_content for doc in documents])
         return formatted_contents
+
 
     @traceable(run_type="retriever", name="retrieve relevant context")
     def retrieve_documents(self, query: str) -> list[Document]:
@@ -151,6 +166,25 @@ class PolicyRetriever:
             return []
     
         return candidates
+
+
+    @traceable(run_type="retriever", name="re-rank documents(cohere)")
+    def rerank_documents(self, query: str, ranked_docs: list[Document]) -> list[Document]:
+        reranked_docs = None
+
+        if not ranked_docs:
+            return []
+        
+        # apply cohere re-ranking
+        if self.cohere_reranker:
+            try:
+                reranked_docs = self.cohere_reranker.rerank_docs(query, ranked_docs)
+            except Exception as e:
+                print(f"Cohere re-ranker failed due to : {e}") 
+        
+        if not reranked_docs:
+            return []
+        return reranked_docs
     
 
     def _require_store(self) -> QdrantVectorStore:

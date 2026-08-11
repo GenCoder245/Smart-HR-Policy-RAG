@@ -31,8 +31,11 @@ def hr_policy_documents_search(search_query: str):
     retrieved_docs = retriever.retrieve_documents(search_query)
     if not retrieved_docs:
         return "NO_CONTEXT"
+
+    reranked_documents = retriever.rerank_documents(query = search_query, 
+                               ranked_docs = retrieved_docs)
     
-    return retriever.format_documents(retrieved_docs)
+    return retriever.format_documents(reranked_documents)
 
 
 def guardrails(state: AgentState):

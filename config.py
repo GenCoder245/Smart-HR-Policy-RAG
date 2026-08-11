@@ -40,9 +40,12 @@ class Settings(BaseSettings):
     retrieval_limit: int = Field(default=12, ge=1, le=50)
 
     # For Future use.
-    # rerank_limit: int = Field(default=5, ge=1, le=20)
     # relevance_threshold: float = Field(default=0.15, ge=-1.0, le=1.0)
     # rerank_concurrency: int = Field(default=4, ge=1, le=12)
+
+    rerank_limit: int = Field(default=5, ge=1, le=20)
+    cohere_api_key: SecretStr | None = None
+    cohere_rerank_model: str = "rerank-english-v3.0" 
 
     chunk_size: int = Field(default=700, ge=200, le=3000)
     chunk_overlap: int = Field(default=0, ge=0, le=600)
