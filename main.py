@@ -5,10 +5,6 @@ from src.models.llm_models import get_language_model
 from src.graph.graph_workflow import build_graph
 import structlog
 from custom_logger import configure_logging
-
-# Import below Only for testing
-from src.prompt.prompts import SYSTEM_PROMPT 
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 
 from langgraph.checkpoint.sqlite import SqliteSaver
@@ -80,29 +76,6 @@ user_query = "what is the performance management process followed here ?"
 
 # user_query = "how to modify your policy records ?"  
 
-
-"""
-retrieved_documents = policy_retriever.retrieve_documents(user_query)
-# Can also use below code
-#retrieved_documents = policy_retriever.search_with_score(user_query)
-
-formatted_docs = policy_retriever.format_documents(retrieved_documents)
-#logger.info(f"retrieved documents: {retrieved_documents}")
-logger.info(f"retrieved relevant documents...")
-
-template = ChatPromptTemplate([
-    ("system",SYSTEM_PROMPT),
-    ("human",user_query),
-])
-llm_input_messages = template.format_messages(context = formatted_docs)
-
-logger.info(f"The context is sent to the LLM...")
-
-ai_response = llm_model.invoke(llm_input_messages)
-
-logger.info(f"The AI Response: {ai_response.content}")
-
-"""
 
 graph = build_graph(language_model, policy_retriever, checkpointer_memory)
 
