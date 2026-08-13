@@ -1,5 +1,16 @@
+import re
+
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from src.prompt.prompts import SYSTEM_PROMPT, GUARDRAIL_PROMPT, OFF_TOPIC_MESSAGE, UNSAFE_MESSAGE, FALLBACK_MESSAGE
+from src.prompt.prompts import (
+    SYSTEM_PROMPT,
+    GUARDRAIL_PROMPT,
+    OFF_TOPIC_MESSAGE,
+    UNSAFE_MESSAGE,
+    FALLBACK_MESSAGE,
+    GREETING_MESSAGE,
+    CONVERSATION_CHECK_PROMPT,
+    ANSWER_FROM_HISTORY_PROMPT,
+)
 from src.graph.schema import AgentState
 from langchain_core.tools import tool
 from src.retrieval.retriever import PolicyRetriever
@@ -10,6 +21,44 @@ from langchain_core.output_parsers import StrOutputParser
 
 llm_model: ChatOpenAI | ChatGoogleGenerativeAI
 retriever: PolicyRetriever
+
+
+def _extract_text(response) -> str:
+    content = getattr(response, "content", "")
+
+    if isinstance(content, list):
+        if content and isinstance(content[0], dict):
+            return str(content[0].get("text", "")).strip()
+        return str(content[0]).strip()
+    if isinstance(content, str):
+        return content.strip()
+    return str(content).strip()
+
+
+def is_simple_greeting(message: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9\s']", " ", message.lower()).strip()
+    if not normalized:
+        return False
+
+    greeting_terms = [
+        "hi",
+        "hello",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "greetings",
+        "how are you",
+        "how are you doing",
+        "how's it going",
+    ]
+
+    words = normalized.split()
+    if len(words) > 15:
+        return False
+
+    return any(term in normalized for term in greeting_terms)
+
 
 # To set the LLM Model for the graph nodes to use
 def set_llm_and_retriever(language_model, doc_retriever):
@@ -41,14 +90,17 @@ def hr_policy_documents_search(search_query: str):
 def guardrails(state: AgentState):
     last_msg = state["messages"][-1].content
 
+    if is_simple_greeting(last_msg):
+        return {"next_node": "greeting"}
+
     messages = [
                 SystemMessage(content=(GUARDRAIL_PROMPT)),
                 HumanMessage(content=last_msg),
             ]
     response = llm_model.invoke(messages)
 
-    label = response.text.strip().upper()
-        
+    label = _extract_text(response).strip().upper()
+
     if "UNSAFE" in label:
         return {"next_node": "unsafe"}
     if "OFF_TOPIC" in label or "OFF-TOPIC" in label:
@@ -58,7 +110,13 @@ def guardrails(state: AgentState):
 
 
 def routing_after_guardrail(state: AgentState):
-    return "retrieve" if state["next_node"] == "safe" else state["next_node"]
+    if state["next_node"] == "safe":
+        return "conversation_check"
+    return state["next_node"]
+
+
+def handle_greeting(state: AgentState):
+    return {"messages": [AIMessage(content=GREETING_MESSAGE)]}
 
 
 def handle_off_topic(state: AgentState):
@@ -67,6 +125,40 @@ def handle_off_topic(state: AgentState):
 
 def handle_unsafe_message(state:AgentState):
     return {"messages" : [AIMessage(content = UNSAFE_MESSAGE)]}
+
+def conversation_follow_up_check(state: AgentState):
+    messages = state["messages"]
+    if len(messages) < 2:
+        return {"next_node": "retrieve"}
+
+    check_messages = [
+        SystemMessage(content=CONVERSATION_CHECK_PROMPT),
+        *messages,
+    ]
+    response = llm_model.invoke(check_messages)
+    decision = _extract_text(response).strip().upper()
+
+    if "YES" in decision:
+        return {"next_node": "answer_from_history"}
+    return {"next_node": "retrieve"}
+
+
+def route_after_conversation_check(state: AgentState):
+    return state["next_node"]
+
+
+def answer_from_history(state: AgentState):
+    history_messages = state["messages"]
+
+    if not history_messages:
+        return {"messages": [AIMessage(content=FALLBACK_MESSAGE)]}
+
+    prompt_messages = [
+        SystemMessage(content=ANSWER_FROM_HISTORY_PROMPT),
+        *history_messages,
+    ]
+    response = llm_model.invoke(prompt_messages)
+    return {"messages": [response]}
 
 
 def retrieve(state: AgentState):
@@ -78,9 +170,10 @@ def retrieve(state: AgentState):
     if len(messages) > 1:
         rephrased_chat_history = messages + [
             SystemMessage(content=(
-                "Given the user's chat history and the latest user question, rewrite the "
-                "question accordingly so it is fully self-contained (resolve pronouns like 'she', "
-                "'it', 'that' etc).  ONLY RETURN THE RE-WRITTEN STANDALONE QUESTION."
+                "Given the user's chat history and the latest user question about HR Policies for some unnamed organization, "
+                "rewrite the question accordingly so it is fully self-contained (resolve pronouns like 'she','it', 'that' etc)."
+                "You need not worry about which exact organization. "
+                "ONLY RETURN THE RE-WRITTEN STANDALONE QUESTION."
                 "DO NOT ANSWER THE QUESTION YOURSELF."
             )),
         ]
@@ -106,7 +199,9 @@ def retrieve(state: AgentState):
         search_query_messages = [   SystemMessage(content=(
                                         "Given the user query, Re-write the query accordingly such that it is "
                                         "best optimized and suitable for vectordatabase search for "
-                                        "a HR Policy related query. "
+                                        "a HR Policy related query for some unnamed organization. "
+                                        "You need not worry about which exact organization. "
+                                        "DO NOT ASK ANY FOLLOW-UP QUESTIONS."
                                         "ONLY RETURN THE RE-WRITTEN QUESTION."
                                         "DO NOT ANSWER THE QUESTION YOURSELF."
                                     )),

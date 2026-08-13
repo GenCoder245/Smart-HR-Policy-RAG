@@ -96,6 +96,27 @@ OFF_TOPIC_MESSAGE = (
     
 )
 
+GREETING_MESSAGE = (
+    "Hi! I am a HR Policy Assistant for your Organization. I'm here to help you with HR policy questions. How can I assist you today?"
+)
+
+CONVERSATION_CHECK_PROMPT = (
+    "Decide whether the latest user message is a conversational follow-up that can be answered "
+    "using the existing conversation history alone, without retrieving new policy documents. "
+    "In that case reply with YES . "
+    "If you cannot find any relevant information available in the existing conversation history "
+    "for answering the latest user message then you can reply with NO to further retrieve policy documents. "
+    "Do not conclude that not having relevant information in the existing conversation history means no such policy exists. "
+    "Examples: 'what about that?', 'what about the leave policy?', 'can you clarify the previous answer?' "
+    "Reply with ONLY one word: YES or NO."
+)
+
+ANSWER_FROM_HISTORY_PROMPT = (
+    "You are answering a follow-up question using the already established conversation context in this chat. "
+    "Use the earlier conversation as the source of truth to resolve references such as 'that', 'it', 'the above policy', "
+    "or 'the previous answer'. Do not run a fresh retrieval. Answer the latest user question based only on the conversation history."
+)
+
 # UNSAFE_MESSAGE = (
 #     "I can't help with requests that try to bypass instructions, reveal hidden prompts, execute "
 #     "commands, access secrets, or perform unsafe actions."
